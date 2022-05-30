@@ -4,13 +4,14 @@ import logging
 import yaml
 import time
 import uuid
+import shutil
 
 logging.basicConfig(level=logging.DEBUG)
 
 admin_filesize_limit = 10485760
 admin_filecount_limit = 1000
 nonadmin_filesize_limit = 5242880
-nonadmin_filecount_limit = 3
+nonadmin_filecount_limit = 5
 
 
 # for proxy
@@ -37,7 +38,7 @@ bot = telebot.TeleBot(token)
 
 
 def get_current_time_formatted():
-    return time.strftime(" %H.%m.%S %d.%m.%y ", time.localtime())
+    return time.strftime("%H.%m.%S %d.%m.%y ", time.localtime())
 
 
 def count_files_in_dir(path):
@@ -88,6 +89,10 @@ def handle_text(message):
         send_generic_message(message)
 
 
+def pick_a_pic():
+    return os.listdir('unmoderated/')[0]
+
+
 def find_pictures_from_user(user_chat_id, path):
     count = 0
     for file in os.listdir(path):
@@ -103,12 +108,12 @@ def photo_saver(admin, message):
         file_info = bot.get_file(message.document.file_id)  # get path to file in tg struct
         if is_file_picture(file_info.file_path):
             if file_info.file_size < (admin_filesize_limit if admin else nonadmin_filesize_limit):  # check file size
-                if find_pictures_from_user(message.chat.id, ('photos/' if admin else 'unmoderated/')) < \
+                if find_pictures_from_user(message.chat.id, 'unmoderated/') < \
                         (admin_filecount_limit if admin else nonadmin_filecount_limit):  # check limit for files
                     downloaded_file = bot.download_file(file_info.file_path)
                     # rename file and add .jpg
-                    src = ('photos/' if admin else 'unmoderated/') + \
-                        get_current_time_formatted() + str(message.chat.id) + " " + str(uuid.uuid4()) + ".jpg"
+                    src = 'unmoderated/' + \
+                          get_current_time_formatted() + str(message.chat.id) + " " + str(uuid.uuid4()) + ".jpg"
                     with open(src, 'wb') as new_file:
                         new_file.write(downloaded_file)
                     bot.reply_to(message, "Saved!")
@@ -131,6 +136,7 @@ def handle_doc(message):
 
     message_logger("Document", message)
     bot.send_message(message.chat.id, "A document? Hmm, let me check...")
+    time.sleep(0.1)
     # For admin(aka whitelisted user) we have no limit for pictures and save it directly to main folder
     if is_user_admin(message.chat.id):
         photo_saver(True, message)
@@ -149,8 +155,40 @@ def handle_photo(message):
                                       "\nWith mobile version you can do it by pressing clip and send photo as file")
 
 
+@bot.callback_query_handler(func=lambda call: True)
+def callback_query(call):
+    if call.data == "1":
+        shutil.move("unmoderated/" + call.message.caption.split("\"")[1], 'photos/')
+        bot.delete_message(call.message.chat.id, call.message.id-1)
+        bot.delete_message(call.message.chat.id, call.message.id)
+        bot.answer_callback_query(call.id, "Nice! Added to list.")
+    elif call.data == "2":
+        shutil.move("unmoderated/" + call.message.caption.split("\"")[1], 'deleted/')
+        bot.delete_message(call.message.chat.id, call.message.id-1)
+        bot.delete_message(call.message.chat.id, call.message.id)
+        bot.answer_callback_query(call.id, "Awful. Removed.")
+
+
+
 def check_pictures_message(message):
-    pass
+    if is_user_admin(message.chat.id):
+        count = count_files_in_dir('unmoderated/')
+        if count > 0:
+            bot.send_message(message.chat.id, "Seems like we have {} pics to check".format(count))
+            pic = pick_a_pic()
+            imgpath = 'unmoderated/'+ pic
+            img = open(imgpath, 'rb')
+            options = [telebot.types.InlineKeyboardButton('Yes!', callback_data=1),
+                       telebot.types.InlineKeyboardButton('No!', callback_data=2)]
+            markup = telebot.types.InlineKeyboardMarkup([options])
+            bot.send_photo(message.chat.id, img, caption="Path: \"" + pic + "\" \n Is this a good picture for our cat channel?",
+                           reply_markup=markup)
+
+
+        else:
+            bot.send_message(message.chat.id, "Seems like we don't have any pics from users")
+    else:
+        bot.send_message(message.chat.id, "I don't have any secret commands. So please leave me alone")
 
 
 def send_stats_message(message):
