@@ -73,8 +73,8 @@ def is_file_picture(file_path):
 
 def check_user_limits(message):
     logging.debug("check_user_limits")
-    return admin_filecount_limit - find_pictures_from_user(message.chat.id) if is_user_admin(message.chat.id) \
-        else nonadmin_filecount_limit - find_pictures_from_user(message.chat.id)
+    return admin_filecount_limit - find_pictures_from_user(message.chat.id, 'unverified/') if is_user_admin(message.chat.id) \
+        else nonadmin_filecount_limit - find_pictures_from_user(message.chat.id,'unverified/')
 
 
 def pick_a_unverified_pic_from_top(path):
@@ -119,7 +119,7 @@ def photo_saver(admin, message):
                     with open(src, 'wb') as new_file:
                         new_file.write(downloaded_file)
                     bot.reply_to(message, "Saved! You can upload {} more pictures."
-                                 .format(check_user_limits))
+                                 .format(check_user_limits(message)))
                 else:
                     bot.send_message(message.chat.id, "Too much pics. Limit for you is {}"
                                      .format(admin_filecount_limit if admin else nonadmin_filecount_limit))
@@ -211,11 +211,13 @@ def send_help_message(message):
     if is_user_admin(message.chat.id):
         bot.send_message(message.chat.id, "For you available:\n/start - start page\n/help - this page\n"
                          "/stats - your posting statistics\n/rules - how to post properly\n"
-                         "/moderate - (A)for moderating pics from users\n/debug - (A)for some admin features")
+                         "/whoami - check your status and upload limit"
+                         "\n/moderate - (A)for moderating pics from users\n/debug - (A)for some admin features")
     else:
         bot.send_message(message.chat.id,
                          "For you available\n/start - start page\n/help - this page\n"
-                         "/stats - your posting statistics\n/rules - how to post properly\n")
+                         "/stats - your posting statistics\n/rules - how to post properly"
+                         "\n/whoami - check your status and upload limit")
 
 
 def send_rules_message(message):
@@ -289,7 +291,7 @@ def send_whoami_message(message):
     if is_user_admin(message.chat.id):
         bot.send_message(message.chat.id, "Admin. /debug and /moderator for you")
     else:
-        bot.send_message(message.chat.id, "User. You can upload {} more pictures.".format(check_user_limits))
+        bot.send_message(message.chat.id, "User. You can upload {} more pictures.".format(check_user_limits(message)))
     pass
 
 
