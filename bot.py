@@ -65,7 +65,7 @@ def is_user_admin(user_chat_id):
 
 
 def is_file_picture(file_path):
-    if ".jpg" in file_path or ".png" in file_path:
+    if ".jpg" in file_path or ".png" in file_path or ".jpeg" in file_path:
         return True
     else:
         return False
@@ -124,7 +124,7 @@ def photo_saver(admin, message):
                 bot.reply_to(message, "Oh no, it's too big, oniichan!!! ({} MB is my limit for you, honestly)"
                              .format((admin_filesize_limit/1000000) if admin else (nonadmin_filesize_limit/1000000)))
         else:
-            bot.reply_to(message, "Oh no, it's looks like not a picture. I understand only .jpg and .png files.")
+            bot.reply_to(message, "Oh no, it's looks like not a picture. I understand only .jpg(.jpeg) and .png files.")
     except Exception as e:
         bot.reply_to(message, str(e))
         logging.log(logging.WARN, "Something happened while downloading picture from user " + str(message.chat.id)
@@ -174,6 +174,7 @@ def check_pictures_message(message):
     if is_user_admin(message.chat.id):
         count = count_files_in_dir('unmoderated/')
         if count > 0:
+            bot.delete_message(message.chat.id, message.id)
             bot.send_message(message.chat.id, "Seems like we have {} pics to check".format(count))
             pic = pick_a_pic()
             imgpath = 'unmoderated/'+ pic
@@ -211,7 +212,7 @@ def send_help_message(message):
 def send_generic_message(message):
     message_logger("Generic", message)
     if is_user_admin(message.chat.id):
-        bot.send_message(message.chat.id, "ACCESS GRANTED")
+        bot.send_message(message.chat.id, "ACCESS GRANTED /clear and /moderator for you")
     else:
         bot.send_message(message.chat.id, "I don't have any secret commands. So please leave me alone")
 
