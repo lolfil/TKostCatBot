@@ -169,7 +169,6 @@ def callback_query(call):
         bot.answer_callback_query(call.id, "Awful. Removed.")
 
 
-
 def check_pictures_message(message):
     if is_user_admin(message.chat.id):
         count = count_files_in_dir('unmoderated/')
@@ -177,15 +176,14 @@ def check_pictures_message(message):
             bot.delete_message(message.chat.id, message.id)
             bot.send_message(message.chat.id, "Seems like we have {} pics to check".format(count))
             pic = pick_a_pic()
-            imgpath = 'unmoderated/'+ pic
+            imgpath = 'unmoderated/' + pic
             img = open(imgpath, 'rb')
             options = [telebot.types.InlineKeyboardButton('Yes!', callback_data=1),
                        telebot.types.InlineKeyboardButton('No!', callback_data=2)]
             markup = telebot.types.InlineKeyboardMarkup([options])
-            bot.send_photo(message.chat.id, img, caption="Path: \"" + pic + "\" \n Is this a good picture for our cat channel?",
+            bot.send_photo(message.chat.id, img, caption="Path: \"" + pic +
+                                                         "\" \n Is this a good picture for our cat channel?",
                            reply_markup=markup)
-
-
         else:
             bot.send_message(message.chat.id, "Seems like we don't have any pics from users")
     else:
