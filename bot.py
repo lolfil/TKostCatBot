@@ -1,6 +1,5 @@
 import os
 import random
-
 import telebot
 import logging
 import yaml
@@ -14,7 +13,6 @@ admin_file_ize_limit = 10485760
 admin_file_count_limit = 1000
 non_admin_file_size_limit = 5242880
 non_admin_filecount_limit = 15
-
 
 # Load configuration
 logging.info("Reading configuration.")
@@ -278,17 +276,13 @@ def send_stats_message(message):
 
 def send_generic_message(message):
     message_logger("Generic", message)
-    if is_user_admin(message.chat.id):
-        bot.send_message(message.chat.id, "ACCESS GRANTED /clear and /moderator for you")
-    else:
-        bot.send_message(message.chat.id, "Can only take your picture and do what specified in /help. "
-                                          "Nothing more, honey.")
+    bot.send_message(message.chat.id, "Can only take your picture and do what specified in /help. Nothing more, honey.")
 
 
 def send_whoami_message(message):
     message_logger("Whoami", message)
     if is_user_admin(message.chat.id):
-        bot.send_message(message.chat.id, "Admin. /debug and /moderator for you")
+        bot.send_message(message.chat.id, "Admin. /debug and /moderate for you")
     else:
         bot.send_message(message.chat.id, "User. You can upload {} more pictures.".format(check_user_limits(message)))
     pass

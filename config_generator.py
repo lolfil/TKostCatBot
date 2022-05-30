@@ -1,10 +1,9 @@
-import yaml
-
 # Use this generator for create your own "config.yaml"
 # Get API token from @BotFather
-# Get ChannelID by "https://api.telegram.org/bot<token>/getUpdates" after adding ur bot to channel
+# Get ChannelID by "curl https://api.telegram.org/bot<token>/getUpdates" after adding ur bot to channel
 # "channel_post":{... "sender_chat":{"id": ChannelID,...}}
 # Get Admin ID by parsing message.chat from admin
+import yaml
 
 print("Set bot API token")
 token = input()
