@@ -10,15 +10,11 @@ import shutil
 
 logging.basicConfig(level=logging.DEBUG)
 
-admin_filesize_limit = 10485760
-admin_filecount_limit = 1000
-nonadmin_filesize_limit = 5242880
-nonadmin_filecount_limit = 5
+admin_file_ize_limit = 10485760
+admin_file_count_limit = 1000
+non_admin_file_size_limit = 5242880
+non_admin_filecount_limit = 15
 
-
-# for proxy
-# import telebot.apihelper as apihelper
-# apihelper.proxy = {'https':'socks5://127.0.0.1:9050'}
 
 # Load configuration
 logging.info("Reading configuration.")
@@ -73,8 +69,9 @@ def is_file_picture(file_path):
 
 def check_user_limits(message):
     logging.debug("check_user_limits")
-    return admin_filecount_limit - find_pictures_from_user(message.chat.id, 'unverified/') if is_user_admin(message.chat.id) \
-        else nonadmin_filecount_limit - find_pictures_from_user(message.chat.id,'unverified/')
+    return admin_file_count_limit - find_pictures_from_user(message.chat.id, 'unverified/') \
+        if is_user_admin(message.chat.id) \
+        else non_admin_filecount_limit - find_pictures_from_user(message.chat.id, 'unverified/')
 
 
 def pick_a_unverified_pic_from_top(path):
@@ -109,9 +106,9 @@ def photo_saver(admin, message):
     try:
         file_info = bot.get_file(message.document.file_id)  # get path to file in tg struct
         if is_file_picture(file_info.file_path):
-            if file_info.file_size < (admin_filesize_limit if admin else nonadmin_filesize_limit):  # check file size
+            if file_info.file_size < (admin_file_ize_limit if admin else non_admin_file_size_limit):  # check file size
                 if find_pictures_from_user(message.chat.id, 'unverified/') < \
-                        (admin_filecount_limit if admin else nonadmin_filecount_limit):  # check limit for files
+                        (admin_file_count_limit if admin else non_admin_filecount_limit):  # check limit for files
                     downloaded_file = bot.download_file(file_info.file_path)
                     # rename file and add .jpg
                     src = 'unverified/' + \
@@ -122,10 +119,12 @@ def photo_saver(admin, message):
                                  .format(check_user_limits(message)))
                 else:
                     bot.send_message(message.chat.id, "Too much pics. Limit for you is {}"
-                                     .format(admin_filecount_limit if admin else nonadmin_filecount_limit))
+                                     .format(admin_file_count_limit if admin else non_admin_filecount_limit))
             else:
-                bot.reply_to(message, "Oh no, it's too big, oniichan!!! ({} MB is my limit for you, honest)"
-                             .format((admin_filesize_limit/1000000) if admin else (nonadmin_filesize_limit/1000000)))
+                bot.reply_to(message, "Oh no, it's too big, step-bro!!! ({} MB is my limit for you, honest)"
+                             .format((admin_file_ize_limit / 1000000)
+                                     if admin
+                                     else (non_admin_file_size_limit / 1000000)))
         else:
             bot.reply_to(message, "Oh no, it's looks like not a picture. I understand only .jpg(.jpeg) and .png files.")
     except Exception as e:
