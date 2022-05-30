@@ -37,7 +37,7 @@ bot = telebot.TeleBot(token)
 
 
 def get_current_time_formatted():
-    return time.strftime("%d.%m.%y %H.%m.%S ", time.localtime())
+    return time.strftime(" %H.%m.%S %d.%m.%y ", time.localtime())
 
 
 def count_files_in_dir(path):
@@ -80,10 +80,22 @@ def handle_text(message):
         send_clear_message(message)
     elif message.text == '/moderator':
         check_pictures_message(message)
+    elif message.text == '/stats':
+        send_stats_message(message)
     elif message.text.lower() == 'any message':
         send_secret_message(message)
     else:
         send_generic_message(message)
+
+
+def find_pictures_from_user(user_chat_id, path):
+    count = 0
+    for file in os.listdir(path):
+        if str(user_chat_id) in file:
+            count += 1
+    return count
+
+    pass
 
 
 def photo_saver(admin, message):
@@ -91,13 +103,12 @@ def photo_saver(admin, message):
         file_info = bot.get_file(message.document.file_id)  # get path to file in tg struct
         if is_file_picture(file_info.file_path):
             if file_info.file_size < (admin_filesize_limit if admin else nonadmin_filesize_limit):  # check file size
-                if not admin and not os.path.exists(str(message.chat.id) + "/"):  # temporary solution for storing pics
-                    os.makedirs(str(message.chat.id) + "/")  # create folder if not exist
-                if count_files_in_dir(('photos/' if admin else (str(message.chat.id) + '/'))) < \
+                if find_pictures_from_user(message.chat.id, ('photos/' if admin else 'unmoderated/')) < \
                         (admin_filecount_limit if admin else nonadmin_filecount_limit):  # check limit for files
                     downloaded_file = bot.download_file(file_info.file_path)
-                    src = ('photos/' if admin else (str(message.chat.id) + '/')) + \
-                        get_current_time_formatted() + str(uuid.uuid4()) + ".jpg"  # rename file and add .jpg
+                    # rename file and add .jpg
+                    src = ('photos/' if admin else 'unmoderated/') + \
+                        get_current_time_formatted() + str(message.chat.id) + " " + str(uuid.uuid4()) + ".jpg"
                     with open(src, 'wb') as new_file:
                         new_file.write(downloaded_file)
                     bot.reply_to(message, "Saved!")
@@ -140,6 +151,12 @@ def handle_photo(message):
 
 def check_pictures_message(message):
     pass
+
+
+def send_stats_message(message):
+    good = find_pictures_from_user(message.chat.id, "photos/")
+    check = find_pictures_from_user(message.chat.id, "unmoderated/")
+    bot.send_message(message.chat.id, "You have {} good pictures and {} pictures to check".format(good, check))
 
 
 def send_start_message(message):
