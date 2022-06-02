@@ -16,6 +16,11 @@ admin_file_count_limit = 1000
 non_admin_file_size_limit = 5242880
 non_admin_filecount_limit = 15
 
+path_to_deleted = 'deleted/'
+path_to_examples = 'examples/'
+path_to_unverified = 'unverified/'
+path_to_verified = 'verified/'
+
 # Load configuration
 logging.info("Reading configuration.")
 with open("config.yaml") as ConfigFile:
@@ -33,10 +38,10 @@ logging.info("Configuration read successfully.")
 bot = telebot.TeleBot(token)
 
 
-def post_image_in_chat():
+def post_image_in_channel():
     logging.debug("post_image_in_chat")
     try:
-        img_path = 'verified/' + pick_a_random_pic('verified/')
+        img_path = path_to_verified + pick_a_random_pic(path_to_verified)
         img = open(img_path, 'rb')
         bot.send_photo(admins[0], img, caption=img_path)
         img.close()
@@ -44,7 +49,7 @@ def post_image_in_chat():
     except Exception as e:
         logging.warning("Something bad occurred during posting pictures." + str(e))
 
-    how_much_pics_we_have = count_files_in_dir('verified/')
+    how_much_pics_we_have = count_files_in_dir(path_to_verified)
     if how_much_pics_we_have < 10:
         bot.send_message(admins[0], "Running out of cats, we have {}".format(how_much_pics_we_have) + " cats now.")
 
@@ -55,7 +60,7 @@ def get_current_time_formatted():
 
 
 def count_files_in_dir(path):
-    logging.debug("count_files_in_dir")
+    logging.debug("count_files_in_dir: " + str(path))
     # folder path
     dir_path = path
     count = 0
@@ -68,7 +73,7 @@ def count_files_in_dir(path):
 
 
 def is_user_admin(user_chat_id):
-    logging.debug("is_user_admin")
+    logging.debug("is_user_admin " + str(user_chat_id))
     if str(user_chat_id) in admins:
         return True
     else:
@@ -76,7 +81,7 @@ def is_user_admin(user_chat_id):
 
 
 def is_file_picture(file_path):
-    logging.debug("is_file_picture")
+    logging.debug("is_file_picture " + str(file_path))
     if ".jpg" in file_path or ".png" in file_path or ".jpeg" in file_path:
         return True
     else:
@@ -84,25 +89,25 @@ def is_file_picture(file_path):
 
 
 def check_user_limits(message):
-    logging.debug("check_user_limits")
-    return admin_file_count_limit - find_pictures_from_user(message.chat.id, 'unverified/') \
+    logging.debug("check_user_limits " + str(message.chat.id))
+    return admin_file_count_limit - find_pictures_from_user(message.chat.id, path_to_unverified) \
         if is_user_admin(message.chat.id) \
-        else non_admin_filecount_limit - find_pictures_from_user(message.chat.id, 'unverified/')
+        else non_admin_filecount_limit - find_pictures_from_user(message.chat.id, path_to_unverified)
 
 
 def pick_a_unverified_pic_from_top(path):
-    logging.debug("pick_a_unverified_pic_from_top")
+    logging.debug("pick_a_unverified_pic_from_top " + str(path))
     return os.listdir(path)[0]
 
 
 def pick_a_random_pic(path):
-    logging.debug("pick_a_random_pic")
+    logging.debug("pick_a_random_pic " + str(path))
     folder = os.listdir(path)
     return random.choice(folder)
 
 
 def find_pictures_from_user(user_chat_id, path):
-    logging.debug("find_pictures_from_user")
+    logging.debug("find_pictures_from_user " + str(user_chat_id) + str(path))
     count = 0
     for file in os.listdir(path):
         if str(user_chat_id) in file:
@@ -114,7 +119,7 @@ def find_pictures_from_user(user_chat_id, path):
 
 def message_logger(message_type, message):
     logging.debug("message_logger")
-    logging.debug(message_type + " message. With " + message.chat.first_name + " with id: " + str(message.chat.id))
+    logging.debug(message_type + " message. With " + str(message.chat.first_name) + " with id: " + str(message.chat.id))
 
 
 def photo_saver(admin, message):
@@ -123,12 +128,12 @@ def photo_saver(admin, message):
         file_info = bot.get_file(message.document.file_id)  # get path to file in tg struct
         if is_file_picture(file_info.file_path):
             if file_info.file_size < (admin_file_ize_limit if admin else non_admin_file_size_limit):  # check file size
-                if find_pictures_from_user(message.chat.id, 'unverified/') < \
+                if find_pictures_from_user(message.chat.id, path_to_unverified) < \
                         (admin_file_count_limit if admin else non_admin_filecount_limit):  # check limit for files
                     downloaded_file = bot.download_file(file_info.file_path)
                     # rename file and add .jpg
-                    src = 'unverified/' + \
-                          get_current_time_formatted() + str(message.chat.id) + " " + str(uuid.uuid4()) + ".jpg"
+                    src = path_to_unverified + \
+                        get_current_time_formatted() + str(message.chat.id) + " " + str(uuid.uuid4()) + ".jpg"
                     with open(src, 'wb') as new_file:
                         new_file.write(downloaded_file)
                     bot.reply_to(message, "Saved! You can upload {} more pictures."
@@ -160,13 +165,13 @@ def handle_text(message):
         send_rules_message(message)
     elif message.text == '/examples':
         send_examples_message(message)
-    elif message.text == '/moderate':
+    elif message.text == '/moderate':  # A
         send_moderate_message(message)
     elif message.text == '/stats':
         send_stats_message(message)
     elif message.text == '/whoami':
         send_whoami_message(message)
-    elif message.text == '/test':
+    elif message.text == '/test':  # A
         test(message)
     else:
         send_generic_message(message)
@@ -201,13 +206,13 @@ def handle_photo(message):
 def callback_query(call):
     logging.debug("callback_query")
     if call.data == "1":
-        shutil.move("unverified/" + call.message.caption.split("\"")[1], 'verified/')
-        bot.delete_message(call.message.chat.id, call.message.id-1)
+        shutil.move("unverified/" + call.message.caption.split("\"")[1], path_to_verified)
+        bot.delete_message(call.message.chat.id, call.message.id - 1)
         bot.delete_message(call.message.chat.id, call.message.id)
         bot.answer_callback_query(call.id, "Nice! Added to list.")
     elif call.data == "2":
-        shutil.move("unverified/" + call.message.caption.split("\"")[1], 'deleted/')
-        bot.delete_message(call.message.chat.id, call.message.id-1)
+        shutil.move("unverified/" + call.message.caption.split("\"")[1], path_to_deleted)
+        bot.delete_message(call.message.chat.id, call.message.id - 1)
         bot.delete_message(call.message.chat.id, call.message.id)
         bot.answer_callback_query(call.id, "Awful. Removed.")
 
@@ -217,24 +222,22 @@ def send_start_message(message):
     user_markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     user_markup.row('/start', '/help', '/stats')
     user_markup.row('/rules', '/whoami', '/examples')
+    if is_user_admin(message.chat.id):
+        user_markup.row('/moderate', '/placeholder', '/debug')
 
     bot.send_message(message.chat.id, "You can send me some pictures of cats. "
                                       "If that's pictures comply our rules I post it to our cat channel. "
                                       "You can try /help if you want some more information.", reply_markup=user_markup)
 
 
-def send_help_message(message):  # TODO here we need a string builder, not a separate strings.
+def send_help_message(message):
     message_logger("Help", message)
+    message_text = "For you available\n/start - start page\n/help - this page" \
+                   "\n/stats - your posting statistics\n/rules - how to post properly " \
+                   "\n/whoami - check your status and upload limit"
     if is_user_admin(message.chat.id):
-        bot.send_message(message.chat.id, "For you available:\n/start - start page\n/help - this page\n"
-                         "/stats - your posting statistics\n/rules - how to post properly\n"
-                         "/whoami - check your status and upload limit"
-                         "\n/moderate - (A)for moderating pics from users\n/debug - (A)for some admin features")
-    else:
-        bot.send_message(message.chat.id,
-                         "For you available\n/start - start page\n/help - this page\n"
-                         "/stats - your posting statistics\n/rules - how to post properly"
-                         "\n/whoami - check your status and upload limit")
+        message_text += "\n/moderate - (A)for moderating pics from users\n/debug - (A)for some admin features"
+    bot.send_message(message.chat.id, message_text)
 
 
 def send_rules_message(message):
@@ -254,10 +257,10 @@ def send_rules_message(message):
 
 def send_examples_message(message):
     message_logger("Examples", message)
-    img1 = open('examples/(1)Bad1,2.jpg', 'rb')
-    img2 = open('examples/(2)Bad1.jpg', 'rb')
-    img3 = open('examples/(3)Bad,3.jpg', 'rb')
-    img4 = open('examples/Good.jpg', 'rb')
+    img1 = open(path_to_examples + '(1)Bad1,2.jpg', 'rb')
+    img2 = open(path_to_examples + '(2)Bad1.jpg', 'rb')
+    img3 = open(path_to_examples + '(3)Bad,3.jpg', 'rb')
+    img4 = open(path_to_examples + 'Good.jpg', 'rb')
     photos = [telebot.types.InputMediaPhoto(img1, caption="Bad due to 1 and 2 rules."),
               telebot.types.InputMediaPhoto(img2, caption="Bad due to rule 1. Yep, we don't like guns here."),
               telebot.types.InputMediaPhoto(img3, caption="Bad due to rule 3. It's not a cat!"),
@@ -268,12 +271,12 @@ def send_examples_message(message):
 def send_moderate_message(message):
     if is_user_admin(message.chat.id):
         message_logger("Moderator", message)
-        count = count_files_in_dir('unverified/')
+        count = count_files_in_dir(path_to_unverified)
         if count > 0:
             bot.delete_message(message.chat.id, message.id)
             bot.send_message(message.chat.id, "Seems like we have {} pics to check".format(count))
-            pic = pick_a_unverified_pic_from_top('unverified/')
-            img_path = 'unverified/' + pic
+            pic = pick_a_unverified_pic_from_top(path_to_unverified)
+            img_path = path_to_unverified + pic
             img = open(img_path, 'rb')
             options = [telebot.types.InlineKeyboardButton('Yes!', callback_data=1),
                        telebot.types.InlineKeyboardButton('No!', callback_data=2)]
@@ -292,8 +295,11 @@ def send_stats_message(message):
     good = find_pictures_from_user(message.chat.id, "verified/")
     check = find_pictures_from_user(message.chat.id, "unverified/")
     posted = find_pictures_from_user(message.chat.id, "posted/")
-    bot.send_message(message.chat.id, "You have {} verified ({} of it already posted) "
-                                      " and {} unverified pictures".format(good+posted, posted, check))
+    message_text = "You have {} verified ({} of it already posted)" \
+                   " and {} unverified pictures".format(good + posted, posted, check)
+    if is_user_admin(message.chat.id):
+        message_text += ("\nAlso {} pics ready to posting".format(count_files_in_dir(path_to_verified)))
+    bot.send_message(message.chat.id, message_text)
 
 
 def send_generic_message(message):
@@ -312,7 +318,7 @@ def send_whoami_message(message):
 
 def test(message):
     if is_user_admin(message.chat.id):
-        post_image_in_chat()
+        post_image_in_channel()
     else:
         send_generic_message(message)
 
