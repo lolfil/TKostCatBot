@@ -7,6 +7,8 @@ import time
 import uuid
 import shutil
 
+from apscheduler.schedulers.background import BackgroundScheduler
+
 logging.basicConfig(level=logging.DEBUG)
 
 admin_file_ize_limit = 10485760
@@ -29,6 +31,22 @@ logging.info("Configuration read successfully.")
 
 # Starting bot with token.
 bot = telebot.TeleBot(token)
+
+
+def post_image_in_chat():
+    logging.debug("post_image_in_chat")
+    try:
+        img_path = 'verified/' + pick_a_random_pic('verified/')
+        img = open(img_path, 'rb')
+        bot.send_photo(admins[0], img, caption=img_path)
+        img.close()
+        shutil.move(img_path, 'posted/')
+    except Exception as e:
+        logging.warning("Something bad occurred during posting pictures." + str(e))
+
+    how_much_pics_we_have = count_files_in_dir('verified/')
+    if how_much_pics_we_have < 10:
+        bot.send_message(admins[0], "Running out of cats, we have {}".format(how_much_pics_we_have) + " cats now.")
 
 
 def get_current_time_formatted():
@@ -148,6 +166,8 @@ def handle_text(message):
         send_stats_message(message)
     elif message.text == '/whoami':
         send_whoami_message(message)
+    elif message.text == '/test':
+        test(message)
     else:
         send_generic_message(message)
 
@@ -203,7 +223,7 @@ def send_start_message(message):
                                       "You can try /help if you want some more information.", reply_markup=user_markup)
 
 
-def send_help_message(message):
+def send_help_message(message):  # TODO here we need a string builder, not a separate strings.
     message_logger("Help", message)
     if is_user_admin(message.chat.id):
         bot.send_message(message.chat.id, "For you available:\n/start - start page\n/help - this page\n"
@@ -271,7 +291,9 @@ def send_stats_message(message):
     message_logger("Stats", message)
     good = find_pictures_from_user(message.chat.id, "verified/")
     check = find_pictures_from_user(message.chat.id, "unverified/")
-    bot.send_message(message.chat.id, "You have {} verified and {} unverified pictures".format(good, check))
+    posted = find_pictures_from_user(message.chat.id, "posted/")
+    bot.send_message(message.chat.id, "You have {} verified ({} of it already posted) "
+                                      " and {} unverified pictures".format(good+posted, posted, check))
 
 
 def send_generic_message(message):
@@ -287,6 +309,17 @@ def send_whoami_message(message):
         bot.send_message(message.chat.id, "User. You can upload {} more pictures.".format(check_user_limits(message)))
     pass
 
+
+def test(message):
+    if is_user_admin(message.chat.id):
+        post_image_in_chat()
+    else:
+        send_generic_message(message)
+
+
+scheduler = BackgroundScheduler()
+# scheduler.add_job(post_image_in_chat, 'cron', hour = 23)
+scheduler.start()
 
 logging.info("Bot started.")
 bot.infinity_polling()
