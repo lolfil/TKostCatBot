@@ -14,24 +14,21 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 class MyBot:
-    # TODO move as maximum settings as possible to generator
-    admin_file_ize_limit = 10485760
-    admin_file_count_limit = 1000
-    non_admin_file_size_limit = 5242880
-    non_admin_filecount_limit = 15
-
-    path_to_deleted = 'pics/deleted/'
-    path_to_examples = 'pics/examples/'
-    path_to_posted = 'pics/posted/'
-    path_to_unverified = 'pics/unverified/'
-    path_to_verified = 'pics/verified/'
-
-    token = ''
-    channel_id = ''
-    admins = ''
-    scheduler = BackgroundScheduler()
-
     def __init__(self, config):
+        self.scheduler = BackgroundScheduler()
+        self.admin_file_size_limit = None
+        self.admin_file_count_limit = None
+        self.non_admin_file_size_limit = None
+        self.non_admin_file_count_limit = None
+        self.path_to_deleted = None
+        self.path_to_examples = None
+        self.path_to_posted = None
+        self.path_to_unverified = None
+        self.path_to_verified = None
+        self.token = None
+        self.channel_id = None
+        self.admins = None
+
         self.read_config(config)  # Read config from file
         self.bot = telebot.TeleBot(self.token)
         # Posts image in channel every day on 23:00
@@ -105,9 +102,18 @@ class MyBot:
             self.token = config.get("bot_api_token")
             self.channel_id = config.get("channel_id")
             self.admins = config.get("admins")
+            self.admin_file_size_limit = config.get("admin_file_size_limit")
+            self.admin_file_count_limit = config.get("admin_file_count_limit")
+            self.non_admin_file_size_limit = config.get("non_admin_file_size_limit")
+            self.non_admin_file_count_limit = config.get("non_admin_file_count_limit")
+            self.path_to_deleted = config.get("path_to_deleted")
+            self.path_to_examples = config.get("path_to_examples")
+            self.path_to_posted = config.get("path_to_posted")
+            self.path_to_unverified = config.get("path_to_unverified")
+            self.path_to_verified = config.get("path_to_verified")
             ConfigFile.close()
             if (self.token == "") or (self.channel_id == "") and (self.admins == ""):
-                logging.critical("Some error occurred while reading configuration. Closing app.")
+                logging.critical("Some error occurred while reading important configurations. Closing app.")
                 quit(0)
         logging.info("Configuration read successfully.")
 
@@ -151,7 +157,8 @@ class MyBot:
         logging.debug("check_user_limits " + str(message.chat.id))
         return self.admin_file_count_limit - self.find_pictures_from_user(message.chat.id, self.path_to_unverified) \
             if self.is_user_admin(message.chat.id) \
-            else self.non_admin_filecount_limit - self.find_pictures_from_user(message.chat.id, self.path_to_unverified)
+            else (self.non_admin_file_count_limit
+                  - self.find_pictures_from_user(message.chat.id, self.path_to_unverified))
 
     @staticmethod
     def pick_a_unverified_pic_from_top(path):
@@ -186,13 +193,13 @@ class MyBot:
         try:
             file_info = self.bot.get_file(message.document.file_id)  # get path to file in tg struct
             if self.is_file_picture(file_info.file_path):
-                if file_info.file_size < (self.admin_file_ize_limit
+                if file_info.file_size < (self.admin_file_size_limit
                                           if admin
                                           else self.non_admin_file_size_limit):  # check file size
                     if self.find_pictures_from_user(message.chat.id, self.path_to_unverified) < \
                             (self.admin_file_count_limit
                              if admin
-                             else self.non_admin_filecount_limit):  # check limit for files
+                             else self.non_admin_file_count_limit):  # check limit for files
                         downloaded_file = self.bot.download_file(file_info.file_path)
                         # rename file and add .jpg
                         src = self.path_to_unverified \
@@ -208,10 +215,10 @@ class MyBot:
                         self.bot.send_message(message.chat.id, "Too much pics. Limit for you is {}"
                                               .format(self.admin_file_count_limit
                                                       if admin
-                                                      else self.non_admin_filecount_limit))
+                                                      else self.non_admin_file_count_limit))
                 else:
                     self.bot.reply_to(message, "Oh no, it's too big, step-bro!!! ({} MB is my limit for you, honest)"
-                                      .format((self.admin_file_ize_limit / 1000000)
+                                      .format((self.admin_file_size_limit / 1000000)
                                               if admin
                                               else (self.non_admin_file_size_limit / 1000000)))
             else:
