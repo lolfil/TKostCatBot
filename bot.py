@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 class MyBot:
-    # TODO move as maximum settings as possible to generatorыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыыы
+    # TODO move as maximum settings as possible to generator
     admin_file_ize_limit = 10485760
     admin_file_count_limit = 1000
     non_admin_file_size_limit = 5242880
