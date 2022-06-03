@@ -9,7 +9,10 @@ import shutil
 
 from apscheduler.schedulers.background import BackgroundScheduler
 config_path = 'config.yaml'
-logging.basicConfig(level=logging.DEBUG)
+
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s %(levelname)-8s %(name)-25s  %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S',)
 # TODO tests, docker.
 
 
@@ -32,7 +35,7 @@ class MyBot:
         self.read_config(config)  # Read config from file
         self.bot = telebot.TeleBot(self.token)
         # Posts image in channel every day on 23:00
-        self.scheduler.add_job(self.post_image_in_channel, 'cron', hour=23)
+        self.scheduler.add_job(self.post_image_in_channel, 'interval', minutes=5)
 
         @self.bot.message_handler(content_types=['text'])
         def handle_text(message):
@@ -52,7 +55,7 @@ class MyBot:
             elif message.text == '/moderate':  # Admins
                 self.send_moderate_message(message)
             elif message.text == '/test':  # Admins
-                self.test_post_pic(message)
+                self.send_test_message(message)
             else:
                 self.send_generic_message(message)
 
@@ -60,12 +63,12 @@ class MyBot:
         def handle_doc(message):
             logging.debug("handle_doc")
             self.message_logger("Document", message)
-            self.bot.send_message(message.chat.id, "A document? Hmm, let me check...")
-            time.sleep(0.1)
+            self.bot.send_message(message.chat.id, "A document? Hm-m, let me check...")
+            time.sleep(0.1)  # is it necessary?
             if self.is_user_admin(message.chat.id):
                 self.photo_saver(True, message)
             else:
-                self.bot.send_message(message.chat.id, "Seems like u not in my whitelist... "
+                self.bot.send_message(message.chat.id, "Seems like u not in my list of good-people... "
                                                        "I'm not interested in your silly pictures! But this one...")
                 self.photo_saver(False, message)
 
@@ -73,7 +76,7 @@ class MyBot:
         def handle_photo(message):
             logging.debug("handle_photo")
             self.message_logger("Photo", message)
-            self.bot.send_message(message.chat.id, "You send me a pic, hope it's not a dick-pic. "
+            self.bot.send_message(message.chat.id, "You send me a pic, hope it's good-cat pic. "
                                                    "Please send it to me without compression.\n"
                                                    "From mobile you can do it by pressing clip and send pic as a file")
 
@@ -115,10 +118,21 @@ class MyBot:
             if (self.token == "") or (self.channel_id == "") and (self.admins == ""):
                 logging.critical("Some error occurred while reading important configurations. Closing app.")
                 quit(0)
-        logging.info("Configuration read successfully.")
+        logging.info("Configuration successfully loaded.")
 
-    def send_message(self):
-        self.bot.send_message(self.admins[0], 'Test message with 30 sec interval')
+    def send_test_message(self, message):
+        logging.debug("send_test_message")
+        logging.debug("Did u see me? I am a test logging message on DEBUG level.")
+        logging.info("Did u see me? I am a test logging message on INFO level.")
+        logging.warning("Did u see me? I am a test logging message on WARNING level.")
+        logging.error("Did u see me? I am a test logging message on ERROR level.")
+        logging.critical("Did u see me? I am a test logging message on CRITICAL level.")
+
+        if self.is_user_admin(message.chat.id):
+            self.post_image_in_channel()
+        else:
+            self.send_generic_message(message)
+        self.bot.send_message(self.admins[0], 'Test message')
 
     @staticmethod
     def count_files_in_dir(path):
@@ -136,7 +150,7 @@ class MyBot:
     @staticmethod
     def get_current_time_formatted():
         logging.debug("get_current_time_formatted")
-        return time.strftime("%H.%m.%S %d.%m.%y ", time.localtime())
+        return time.strftime("%d.%m.%y_%H-%m-%S", time.localtime())
 
     def is_user_admin(self, user_chat_id):
         logging.debug("is_user_admin " + str(user_chat_id))
@@ -184,7 +198,6 @@ class MyBot:
 
     @staticmethod
     def message_logger(message_type, message):
-        logging.debug("message_logger")
         logging.debug(
             message_type + " message. With " + str(message.chat.first_name) + " with id: " + str(message.chat.id))
 
@@ -204,9 +217,11 @@ class MyBot:
                         # rename file and add .jpg
                         src = self.path_to_unverified \
                             + self.get_current_time_formatted() \
+                            + " " \
                             + str(message.chat.id) \
                             + " " \
-                            + str(uuid.uuid4()) + ".jpg"
+                            + str(uuid.uuid4()) \
+                            + ".jpg"
                         with open(src, 'wb') as new_file:
                             new_file.write(downloaded_file)
                         self.bot.reply_to(message, "Saved! You can upload {} more pictures."
@@ -226,8 +241,12 @@ class MyBot:
                                   "Oh no, it's looks like not a picture. I understand only .jpg(.jpeg) and .png files.")
         except Exception as e:
             self.bot.reply_to(message, str(e))
-            logging.log(logging.WARN, "Something happened while downloading picture from user " + str(message.chat.id)
-                        + " name: " + message.chat.first_name + " Error code is: " + str(e))
+            logging.warning("Something happened while downloading picture from user "
+                            + str(message.chat.id)
+                            + " name: "
+                            + message.chat.first_name
+                            + " Error code is: "
+                            + str(e))
 
     def send_start_message(self, message):
         self.message_logger("Start", message)
@@ -244,11 +263,15 @@ class MyBot:
 
     def send_help_message(self, message):
         self.message_logger("Help", message)
-        message_text = "For you available\n/start - start page\n/help - this page" \
-                       "\n/stats - your posting statistics\n/rules - how to post properly " \
+        message_text = "For you available" \
+                       "\n/start - start page" \
+                       "\n/help - this page" \
+                       "\n/stats - your posting statistics" \
+                       "\n/rules - how to post properly " \
                        "\n/whoami - check your status and upload limit"
         if self.is_user_admin(message.chat.id):
-            message_text += "\n/moderate - (A)for moderating pics from users\n/debug - (A)for some admin features"
+            message_text += "\n/moderate - (A)for moderating pics from users" \
+                            "\n/test - (A)test posting, test message, test all types of logs, press with caution"
         self.bot.send_message(message.chat.id, message_text)
 
     def send_rules_message(self, message):
@@ -256,14 +279,14 @@ class MyBot:
         self.bot.send_message(message.chat.id, "Here some our basic rules for pictures."
                                                "\nIf you want your great-cat-picture to pass moderation."
                                                "\n0. Moderators may not like your picture. "
-                                               "Nothing wrong with you specifically, it just happened."
+                                               "Nothing wrong with you, it just happened."
                                                "\n1. No violence (including guns) or politics. "
                                                "That's totally prohibited, we love cats."
-                                               "\n2. No meme or drawings ,yep, only cool real cats."
+                                               "\n2. No memes or drawings, yep, only cool real cats."
                                                "\n3. It's about cats. Not about anyone else. "
-                                               "No human (except of VERY funny or cool cats with it)"
+                                               "No humans (except of VERY funny or cool cats with it)"
                                                "\n4. No personal information. We do not need it here."
-                                               "\n Try to see /examples if you want to understand more")
+                                               "\nTry to see /examples if you want to understand more")
 
     def send_examples_message(self, message):
         self.message_logger("Examples", message)
@@ -271,9 +294,9 @@ class MyBot:
         img2 = open(self.path_to_examples + '(2)Bad1.jpg', 'rb')
         img3 = open(self.path_to_examples + '(3)Bad,3.jpg', 'rb')
         img4 = open(self.path_to_examples + 'Good.jpg', 'rb')
-        photos = [telebot.types.InputMediaPhoto(img1, caption="Bad due to 1 and 2 rules."),
-                  telebot.types.InputMediaPhoto(img2, caption="Bad due to rule 1. Yep, we don't like guns here."),
-                  telebot.types.InputMediaPhoto(img3, caption="Bad due to rule 3. It's not a cat!"),
+        photos = [telebot.types.InputMediaPhoto(img1, caption="Bad due to rules #1 and #2."),
+                  telebot.types.InputMediaPhoto(img2, caption="Bad due to rule #1. Yep, we don't like guns here."),
+                  telebot.types.InputMediaPhoto(img3, caption="Bad due to rule #3. It's not a cat!"),
                   telebot.types.InputMediaPhoto(img4, caption="Good. We like stuff like this here.")]
         self.bot.send_media_group(message.chat.id, photos)
 
@@ -305,13 +328,21 @@ class MyBot:
         good = self.find_pictures_from_user(message.chat.id, self.path_to_verified)
         check = self.find_pictures_from_user(message.chat.id, self.path_to_unverified)
         posted = self.find_pictures_from_user(message.chat.id, self.path_to_posted)
-        message_text = "You have {} verified ({} of it already posted)" \
-                       " and {} unverified pictures".format(good + posted, posted, check)
+        deleted = self.find_pictures_from_user(message.chat.id, self.path_to_deleted)
+        message_text = "Cats we have from you:" \
+                       "\n{} verified ({} of it already posted)." \
+                       "\n{} unverified pictures." \
+                       "\n{} deleted".format(good + posted, posted, check, deleted)
         if self.is_user_admin(message.chat.id):
-            message_text += ("\nAlso {} pics ready for posting and {} for verifying. {} already posted now"
+            message_text += ("\n\nCats we have from all people:"
+                             "\n{} verified and ready for posting."
+                             "\n{} unverified."
+                             "\n{} already posted now."
+                             "\n{} deleted."
                              .format(self.count_files_in_dir(self.path_to_verified),
                                      self.count_files_in_dir(self.path_to_unverified),
-                                     self.count_files_in_dir(self.path_to_posted)))
+                                     self.count_files_in_dir(self.path_to_posted),
+                                     self.count_files_in_dir(self.path_to_deleted)))
         self.bot.send_message(message.chat.id, message_text)
 
     def send_generic_message(self, message):
@@ -322,17 +353,11 @@ class MyBot:
     def send_whoami_message(self, message):
         self.message_logger("Whoami", message)
         if self.is_user_admin(message.chat.id):
-            self.bot.send_message(message.chat.id, "Admin. /debug and /moderate for you")
+            self.bot.send_message(message.chat.id, "Admin./moderate and /test for you")
         else:
             self.bot.send_message(message.chat.id,
                                   "User. You can upload {} more pictures.".format(self.check_user_limits(message)))
         pass
-
-    def test_post_pic(self, message):
-        if self.is_user_admin(message.chat.id):
-            self.post_image_in_channel()
-        else:
-            self.send_generic_message(message)
 
     def post_image_in_channel(self):
         logging.debug("post_image_in_channel")
