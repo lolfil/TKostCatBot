@@ -309,11 +309,14 @@ class MyBot:
         img1 = open(self.path_to_examples + '(1)Bad1,2.jpg', 'rb')
         img2 = open(self.path_to_examples + '(2)Bad1.jpg', 'rb')
         img3 = open(self.path_to_examples + '(3)Bad,3.jpg', 'rb')
-        img4 = open(self.path_to_examples + 'Good.jpg', 'rb')
+        img4 = open(self.path_to_examples + '(4)Bad,2.jpg', 'rb')
+        img5 = open(self.path_to_examples + 'Good.jpg', 'rb')
+
         photos = [telebot.types.InputMediaPhoto(img1, caption="Bad due to rules #1 and #2."),
                   telebot.types.InputMediaPhoto(img2, caption="Bad due to rule #1. Yep, we don't like guns here."),
                   telebot.types.InputMediaPhoto(img3, caption="Bad due to rule #3. It's not a cat!"),
-                  telebot.types.InputMediaPhoto(img4, caption="Good. We like stuff like this here.")]
+                  telebot.types.InputMediaPhoto(img4, caption="Bad due to rule #2, memes prohibited"),
+                  telebot.types.InputMediaPhoto(img5, caption="Good. We like stuff like this here.")]
         self.bot.send_media_group(message.chat.id, photos)
 
     def send_stats_message(self, message):
