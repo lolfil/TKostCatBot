@@ -8,9 +8,7 @@ import yaml
 import time
 import uuid
 import shutil
-import io
 
-from PIL import Image
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # TODO tests, docker.
@@ -92,7 +90,7 @@ class MyBot:
         self.read_config(config)  # Read config from file
         self.bot = telebot.TeleBot(self.token)
         # Posts image in channel every hour on 20 min
-        self.scheduler.add_job(self.post_image_in_channel, 'cron', minute=20)
+        self.scheduler.add_job(self.post_image_in_channel, 'cron', minute=30)
 
         @self.bot.message_handler(content_types=['text'])
         def handle_text(message):
@@ -187,23 +185,25 @@ class MyBot:
             file_info = self.bot.get_file(message.document.file_id)  # get path to file in tg struct
             if is_file_picture(file_info.file_path):
                 if file_info.file_size < (self.admin_file_size_limit
-                if admin
-                else self.non_admin_file_size_limit):  # check file size
+                                          if admin
+                                          else self.non_admin_file_size_limit):  # check file size
                     if find_pictures_from_user(message.chat.id, self.path_to_unverified) < \
                             (self.admin_file_count_limit
-                            if admin
-                            else self.non_admin_file_count_limit):  # check limit for files
+                             if admin
+                             else self.non_admin_file_count_limit):  # check limit for files
                         downloaded_file = self.bot.download_file(file_info.file_path)
-                        im = Image.open(io.BytesIO(downloaded_file)).convert("RGB")  # read as byte-array
+                        #  im = Image.open(io.BytesIO(downloaded_file)).convert("RGB")  # read as byte-array
                         # build a path for file: unverified/ + time + userID + uni-string + .jpg
                         src = self.path_to_unverified \
-                              + get_current_time_formatted() \
-                              + " " \
-                              + str(message.chat.id) \
-                              + " " \
-                              + str(uuid.uuid4()) \
-                              + ".jpg"
-                        im.save(src, "jpeg")  # save as jpeg
+                            + get_current_time_formatted() \
+                            + " " \
+                            + str(message.chat.id) \
+                            + " " \
+                            + str(uuid.uuid4()) \
+                            + ".jpg"
+                        with open(src, 'wb') as new_file:
+                            new_file.write(downloaded_file)
+                        #  im.save(src, "jpeg")  # save as jpeg
                         self.bot.reply_to(message, "Saved! You can upload {} more pictures."
                                           .format(self.check_user_limits(message)))
                     else:
