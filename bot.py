@@ -1,5 +1,7 @@
 import os
 import random
+# noinspection PyPackageRequirements
+# to don't have that annoying message
 import telebot
 import logging
 import yaml
@@ -12,6 +14,7 @@ from PIL import Image
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # TODO tests, docker.
+import config_generator
 
 config_path = 'config.yaml'
 logging.basicConfig(level=logging.DEBUG,
@@ -88,8 +91,8 @@ class MyBot:
 
         self.read_config(config)  # Read config from file
         self.bot = telebot.TeleBot(self.token)
-        # Posts image in channel every day on 8:35
-        self.scheduler.add_job(self.post_image_in_channel, 'cron', hour=8)
+        # Posts image in channel every hour on 20 min
+        self.scheduler.add_job(self.post_image_in_channel, 'cron', minute=20)
 
         @self.bot.message_handler(content_types=['text'])
         def handle_text(message):
@@ -184,22 +187,22 @@ class MyBot:
             file_info = self.bot.get_file(message.document.file_id)  # get path to file in tg struct
             if is_file_picture(file_info.file_path):
                 if file_info.file_size < (self.admin_file_size_limit
-                   if admin
-                   else self.non_admin_file_size_limit):  # check file size
+                if admin
+                else self.non_admin_file_size_limit):  # check file size
                     if find_pictures_from_user(message.chat.id, self.path_to_unverified) < \
                             (self.admin_file_count_limit
-                             if admin
-                             else self.non_admin_file_count_limit):  # check limit for files
+                            if admin
+                            else self.non_admin_file_count_limit):  # check limit for files
                         downloaded_file = self.bot.download_file(file_info.file_path)
                         im = Image.open(io.BytesIO(downloaded_file)).convert("RGB")  # read as byte-array
                         # build a path for file: unverified/ + time + userID + uni-string + .jpg
                         src = self.path_to_unverified \
-                            + get_current_time_formatted() \
-                            + " " \
-                            + str(message.chat.id) \
-                            + " " \
-                            + str(uuid.uuid4()) \
-                            + ".jpg"
+                              + get_current_time_formatted() \
+                              + " " \
+                              + str(message.chat.id) \
+                              + " " \
+                              + str(uuid.uuid4()) \
+                              + ".jpg"
                         im.save(src, "jpeg")  # save as jpeg
                         self.bot.reply_to(message, "Saved! You can upload {} more pictures."
                                           .format(self.check_user_limits(message)))
@@ -230,7 +233,7 @@ class MyBot:
         try:
             img_path = self.path_to_verified + pick_a_random_pic(self.path_to_verified)
             img = open(img_path, 'rb')
-            self.bot.send_photo(self.channel_id, img, caption=img_path)
+            self.bot.send_photo(self.channel_id, img)  # , caption=img_path
             img.close()
             shutil.move(img_path, self.path_to_posted)
         except Exception as e:
@@ -242,6 +245,11 @@ class MyBot:
 
     def read_config(self, cfg_path):
         logging.info("Reading configuration.")
+        if not os.path.exists(cfg_path):
+            logging.warning("Configuration not found in: {}".format(cfg_path) + " Starting generator.")
+            time.sleep(0.5)
+            print("Seems like we don't have any config on: {}".format(cfg_path) + "\nSo, it's time to use generator")
+            config_generator.start_generator()
         with open(cfg_path) as ConfigFile:
             config = yaml.safe_load(ConfigFile)
             self.token = config.get("bot_api_token")
@@ -382,7 +390,7 @@ class MyBot:
         logging.critical("Did u see me? I am a test logging message on CRITICAL level.")
 
         if self.is_user_admin(message.chat.id):
-            self.post_image_in_channel()
+            pass  # self.post_image_in_channel()
         else:
             self.send_generic_message(message)
         self.bot.send_message(self.admins[0], 'Someone used /test command')
