@@ -234,7 +234,7 @@ class MyBot:
         try:
             img_path = self.path_to_verified + pick_a_random_pic(self.path_to_verified)
             img = open(img_path, 'rb')
-            self.bot.send_photo(self.admins[0], img)  # , caption=img_path
+            self.bot.send_photo(self.channel_id, img)  # , caption=img_path
             img.close()
             timestamp = img_path.split('/')[2].split(" ")[0]
             userid = img_path.split('/')[2].split(" ")[1]
@@ -395,7 +395,7 @@ class MyBot:
         logging.critical("Did u see me? I am a test logging message on CRITICAL level.")
 
         if self.is_user_admin(message.chat.id):
-            self.post_image_in_channel()
+            pass #self.post_image_in_channel()
         else:
             self.send_generic_message(message)
         self.bot.send_message(self.admins[0], 'Someone used /test command')
