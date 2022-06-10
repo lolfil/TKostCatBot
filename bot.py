@@ -89,8 +89,8 @@ class MyBot:
 
         self.read_config(config)  # Read config from file
         self.bot = telebot.TeleBot(self.token)
-        # Posts image in channel every hour on 20 min
-        self.scheduler.add_job(self.post_image_in_channel, 'cron', minute=30)
+        # Posts image in channel every day on 5:00 UTC
+        self.scheduler.add_job(self.post_image_in_channel, 'cron', hour=5)
 
         @self.bot.message_handler(content_types=['text'])
         def handle_text(message):
@@ -230,11 +230,16 @@ class MyBot:
 
     def post_image_in_channel(self):
         logging.debug("post_image_in_channel")
+
         try:
             img_path = self.path_to_verified + pick_a_random_pic(self.path_to_verified)
             img = open(img_path, 'rb')
-            self.bot.send_photo(self.channel_id, img)  # , caption=img_path
+            self.bot.send_photo(self.admins[0], img)  # , caption=img_path
             img.close()
+            timestamp = img_path.split('/')[2].split(" ")[0]
+            userid = img_path.split('/')[2].split(" ")[1]
+            name = img_path.split('/')[2].split(" ")[2]
+            logging.info("Post image ({}) from user with ID: {} with timecode: {}".format(name, userid, timestamp))
             shutil.move(img_path, self.path_to_posted)
         except Exception as e:
             logging.warning("Something bad occurred during posting pictures." + str(e))
@@ -390,7 +395,7 @@ class MyBot:
         logging.critical("Did u see me? I am a test logging message on CRITICAL level.")
 
         if self.is_user_admin(message.chat.id):
-            pass  # self.post_image_in_channel()
+            self.post_image_in_channel()
         else:
             self.send_generic_message(message)
         self.bot.send_message(self.admins[0], 'Someone used /test command')
