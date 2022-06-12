@@ -3,6 +3,7 @@ import random
 # noinspection PyPackageRequirements
 # to don't have that annoying message
 import telebot
+import requests.exceptions
 import logging
 import yaml
 import time
@@ -11,7 +12,7 @@ import shutil
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-# TODO tests, docker.
+# TODO tests.
 import config_generator
 
 config_path = 'config.yaml'
@@ -91,6 +92,7 @@ class MyBot:
         self.bot = telebot.TeleBot(self.token)
         # Posts image in channel every day on 5:00 UTC
         self.scheduler.add_job(self.post_image_in_channel, 'cron', hour=5)
+        self.scheduler.start()  # Start scheduler here.
 
         @self.bot.message_handler(content_types=['text'])
         def handle_text(message):
@@ -162,8 +164,12 @@ class MyBot:
                 self.bot.delete_message(call.message.chat.id, call.message.id)
                 self.bot.answer_callback_query(call.id, "Awful. Removed.")
 
-        self.scheduler.start()  # Start scheduler here.
+    def start(self):
+
         self.bot.polling(True)
+
+    def stop(self):
+        self.bot.stop_polling()
 
     def check_user_limits(self, message):
         logging.debug("check_user_limits " + str(message.chat.id))
@@ -219,8 +225,8 @@ class MyBot:
             else:
                 self.bot.reply_to(message,
                                   "Oh no, it's looks like not a picture. I understand only .jpg(.jpeg) and .png files.")
-        except Exception as e:
-            self.bot.reply_to(message, str(e))
+        except Exception as ex:
+            self.bot.reply_to(message, str(ex))
             logging.warning("Something happened while downloading picture from user "
                             + str(message.chat.id)
                             + " name: "
@@ -241,8 +247,8 @@ class MyBot:
             name = img_path.split('/')[2].split(" ")[2]
             logging.info("Post image ({}) from user with ID: {} with timecode: {}".format(name, userid, timestamp))
             shutil.move(img_path, self.path_to_posted)
-        except Exception as e:
-            logging.warning("Something bad occurred during posting pictures." + str(e))
+        except Exception as ex:
+            logging.warning("Something bad occurred during posting pictures." + str(ex))
 
         how_much_pics_we_have = count_files_in_dir(self.path_to_verified)
         if how_much_pics_we_have < 10:
@@ -395,7 +401,7 @@ class MyBot:
         logging.critical("Did u see me? I am a test logging message on CRITICAL level.")
 
         if self.is_user_admin(message.chat.id):
-            pass #self.post_image_in_channel()
+            pass  # self.post_image_in_channel()
         else:
             self.send_generic_message(message)
         self.bot.send_message(self.admins[0], 'Someone used /test command')
@@ -407,4 +413,23 @@ class MyBot:
 
 
 logging.info("Starts bot...")
-MyBot(config_path)
+bot = MyBot(config_path)
+try:
+    bot.start()
+except requests.exceptions.ConnectionError as e:
+    logging.warning("{} occurred. Trying to wait a minute and restart.".format(e))
+    bot.stop()
+    time.sleep(60)
+    bot.start()
+except telebot.apihelper.ApiTelegramException as e:
+    logging.warning("{} occurred. Trying to wait a minute and restart.".format(e))
+    bot.stop()
+    time.sleep(60)
+    bot.start()
+except requests.exceptions.ReadTimeout as e:
+    logging.warning("{} occurred. Trying to wait a minute and restart.".format(e))
+    bot.stop()
+    time.sleep(60)
+    bot.start()
+except Exception as e:
+    logging.warning("{} occurred. Trying to wait a minute and restart.".format(e))
