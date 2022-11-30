@@ -198,7 +198,6 @@ class MyBot:
                              if admin
                              else self.non_admin_file_count_limit):  # check limit for files
                         downloaded_file = self.bot.download_file(file_info.file_path)
-                        #  im = Image.open(io.BytesIO(downloaded_file)).convert("RGB")  # read as byte-array
                         # build a path for file: unverified/ + time + userID + uni-string + .jpg
                         src = self.path_to_unverified \
                             + get_current_time_formatted() \
@@ -232,7 +231,7 @@ class MyBot:
                             + " name: "
                             + message.chat.first_name
                             + " Error code is: "
-                            + str(e))
+                            + str(ex))
 
     def post_image_in_channel(self):
         logging.debug("post_image_in_channel")
